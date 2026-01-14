@@ -1,16 +1,17 @@
-# OpenShrimp CLI
+# OpenShrimp
 
-A unified CLI tool for managing AI development tools (Claude, Gemini, OpenCode, VSCode) on macOS and Linux. Part of the OpenShrimp ecosystem.
+A unified CLI and Desktop UI tool for managing AI development tools (Claude, Gemini, OpenCode) on macOS and Linux.
+
+![OpenShrimp UI Preview](https://via.placeholder.com/800x400?text=OpenShrimp+UI)
 
 ## Features
 
 - **Tool Discovery**: Automatically detect AI tools installed on your system
 - **Cleanup**: Clean up temporary files with configurable retention periods
-- **Health Check**: Verify tool configurations and detect issues
-- **Statistics**: View disk usage across all AI tools
-- **Configuration Management**: Centralized YAML configuration
-- **Model Switching**: Switch between different AI models
+- **Model Switching**: Switch between different AI models (Claude, MiniMax, GLM)
+- **Configuration Backup**: Backup and restore tool configurations
 - **Context Sharing**: Unified context management across AI tools
+- **Web UI**: Beautiful desktop interface built with Tauri + Vue 3
 
 ## Installation
 
@@ -19,17 +20,17 @@ A unified CLI tool for managing AI development tools (Claude, Gemini, OpenCode, 
 ```bash
 git clone https://github.com/SuTang-vain/OpenShrimp-cli
 cd OpenShrimp-cli
-go build -o ai-mgr .
+make build
 sudo mv ai-mgr /usr/local/bin/
 ```
 
 ### Homebrew (Coming Soon)
 
 ```bash
-brew install sutang-vain/open-shrimp/open-shrimp-cli
+brew install sutang-vain/open-shrimp/open-shrimp
 ```
 
-## Usage
+## CLI Usage
 
 ```bash
 # Show help
@@ -37,23 +38,56 @@ ai-mgr --help
 
 # Scan for AI tools
 ai-mgr scan
-ai-mgr scan -v  # verbose output
 
-# Clean up temporary files (default: 7 days)
+# Clean up temporary files
 ai-mgr cleanup
-ai-mgr cleanup --days 3  # keep last 3 days
-
-# Health check
-ai-mgr check
-
-# Show disk usage statistics
-ai-mgr stats
+ai-mgr cleanup --days 3
 
 # Switch AI model
 ai-mgr switch claude-sonnet-4
 
-# Show version
-ai-mgr version
+# Backup configurations
+ai-mgr backup
+
+# Restore from backup
+ai-mgr restore backup_20240114.tar.gz
+```
+
+## Desktop UI
+
+### Quick Start
+
+```bash
+# Install dependencies
+make deps
+
+# Start daemon (required for UI)
+./ai-mgr daemon &
+
+# Start UI development server
+make ui-dev
+# Open http://localhost:3000
+```
+
+### Build Desktop App
+
+```bash
+# Install Rust + Tauri
+make tauri-install
+
+# Build Tauri app
+make tauri-build
+```
+
+### Production Build
+
+```bash
+# Build frontend
+make ui-build
+
+# Start daemon with static UI
+./ai-mgr daemon
+# Open http://127.0.0.1:19999
 ```
 
 ## Commands
@@ -68,16 +102,16 @@ ai-mgr version
 | `link` | Manage symbolic links |
 | `backup` | Backup configurations |
 | `restore` | Restore configurations |
+| `context` | Manage conversation history |
+| `daemon` | Start HTTP server for Web UI |
 | `version` | Show version information |
 
 ## Configuration
 
-The default configuration file is at `~/.ai-manager/config.yaml`.
+Default config: `~/.ai-manager/config.yaml`
 
 ```yaml
 version: "1.0.0"
-home_dir: "~/.ai-manager"
-
 tools:
   claude:
     name: Claude Code
@@ -87,78 +121,67 @@ tools:
     name: Gemini CLI
     path: "~/.gemini"
     enabled: true
-  opencode:
-    name: OpenCode
-    path: "~/.config/opencode"
-    enabled: true
 
 models:
   claude-sonnet-4:
     name: Claude Sonnet 4
     provider: anthropic
-    api_endpoint: "https://api.anthropic.com"
   minimax-m2.1:
     name: MiniMax M2.1
     provider: minimax
-    api_endpoint: "https://api.minimaxi.com/anthropic"
-  glm-4.7:
-    name: GLM-4.7
-    provider: zhipu
-    api_endpoint: "https://open.bigmodel.cn/api/anthropic"
-
-retention:
-  temp_files: 7      # days
-  debug_logs: 7      # days
-  shell_snapshots: 30 # days
 ```
+
+## Web API
+
+When running in daemon mode:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check |
+| `/api/tools` | GET | List tools |
+| `/api/tools/{name}/cleanup` | POST | Clean tool |
+| `/api/models` | GET | List models |
+| `/api/switch` | POST | Switch model |
+| `/api/backups` | GET/POST | Manage backups |
+| `/api/links` | GET/POST/DELETE | Manage links |
+| `/api/stats` | GET | Get statistics |
+| `/ws` | WebSocket | Real-time updates |
 
 ## Supported Tools
 
-| Tool | Default Path | Configuration |
-|------|--------------|---------------|
-| Claude Code | ~/.claude | settings.json |
-| Gemini CLI | ~/.gemini | settings.json |
-| OpenCode | ~/.config/opencode | settings.json |
-| VSCode | ~/Library/.../workspaceStorage | User settings |
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `AI_MGR_CONFIG` | Path to config file |
-| `ANTHROPIC_API_KEY` | Anthropic API key |
-| `MINIMAX_API_KEY` | MiniMax API key |
-| `ZHIPU_API_KEY` | Zhipu AI API key |
+| Tool | Default Path |
+|------|--------------|
+| Claude Code | ~/.claude |
+| Gemini CLI | ~/.gemini |
+| OpenCode | ~/.config/opencode |
 
 ## Development
 
 ```bash
-# Build
+# Build binary
 make build
 
-# Test
+# Run tests
 make test
 
-# Install dependencies
+# Install all dependencies
 make deps
 
-# Release build for all platforms
+# Build for all platforms
 make release
 ```
 
-## Contributing
+## Architecture
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+```
+main.go          → Entry point
+cmd/daemon/      → HTTP + WebSocket server
+internal/cli/    → Cobra commands
+internal/*/      → Feature modules
+ui/              → Vue 3 frontend
+tauri/           → Tauri desktop config
+```
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Related Projects
-
-- [OpenShrimp UI](https://github.com/SuTang-vain/OpenShrimp-ui) - Web Dashboard
-- [AI Central](https://github.com/SuTang-vain/AI-Central) - Centralized AI config management
+MIT License
