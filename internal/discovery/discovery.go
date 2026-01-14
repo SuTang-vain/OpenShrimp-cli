@@ -27,7 +27,14 @@ func (s *Scanner) Scan() (*models.ScanResult, error) {
 		Timestamp: time.Now(),
 	}
 
-	for key, tool := range s.cfg.Tools {
+	tools := s.cfg.Tools
+
+	// Use default tools if none configured
+	if len(tools) == 0 {
+		tools = getDefaultTools()
+	}
+
+	for key, tool := range tools {
 		if !tool.Enabled {
 			continue
 		}
@@ -39,6 +46,36 @@ func (s *Scanner) Scan() (*models.ScanResult, error) {
 
 	result.Total = len(result.Tools)
 	return result, nil
+}
+
+// getDefaultTools returns the default AI tools configuration
+func getDefaultTools() map[string]config.Tool {
+	return map[string]config.Tool{
+		"claude": {
+			Name:       "Claude Code",
+			Path:       "~/.claude",
+			ConfigPath: "settings.json",
+			DataPath:   "projects",
+			TempPaths:  []string{"debug", "shell-snapshots"},
+			Enabled:    true,
+		},
+		"gemini": {
+			Name:       "Gemini CLI",
+			Path:       "~/.gemini",
+			ConfigPath: "settings.json",
+			DataPath:   "tmp",
+			TempPaths:  []string{"tmp"},
+			Enabled:    true,
+		},
+		"opencode": {
+			Name:       "OpenCode",
+			Path:       "~/.config/opencode",
+			ConfigPath: "settings.json",
+			DataPath:   "projects",
+			TempPaths:  []string{"node_modules", ".cache"},
+			Enabled:    true,
+		},
+	}
 }
 
 // discoverTool discovers a single tool

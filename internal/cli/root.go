@@ -20,7 +20,6 @@ Features:
 }
 
 func Run() error {
-	// Add subcommands
 	rootCmd.AddCommand(
 		newScanCmd(),
 		newCleanupCmd(),
@@ -31,54 +30,10 @@ func Run() error {
 		newRestoreCmd(),
 		newStatsCmd(),
 		newVersionCmd(),
+		newContextCmd(),
 	)
 
 	return rootCmd.Execute()
-}
-
-// Placeholder commands
-func newSwitchCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "switch",
-		Short: "Switch between AI models",
-		Long:  `Switch between different AI model configurations.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println("Model switching - coming soon!")
-		},
-	}
-}
-
-func newLinkCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "link",
-		Short: "Manage symbolic links",
-		Long:  `Create or verify symbolic links for AI tool configurations.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println("Link management - coming soon!")
-		},
-	}
-}
-
-func newBackupCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "backup",
-		Short: "Backup configurations",
-		Long:  `Backup AI tool configurations to a safe location.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println("Backup - coming soon!")
-		},
-	}
-}
-
-func newRestoreCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "restore",
-		Short: "Restore configurations",
-		Long:  `Restore AI tool configurations from a backup.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println("Restore - coming soon!")
-		},
-	}
 }
 
 func newVersionCmd() *cobra.Command {
@@ -87,12 +42,11 @@ func newVersionCmd() *cobra.Command {
 		Short: "Show version",
 		Long:  `Show the version of AI Tools Manager.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println("AI Tools Manager v0.1.0")
+			cmd.Println("AI Tools Manager v0.2.0")
 		},
 	}
 }
 
-// GetRootCmd returns the root command for testing purposes
 func GetRootCmd() *cobra.Command {
 	return rootCmd
 }
