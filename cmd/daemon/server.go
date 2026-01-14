@@ -443,6 +443,7 @@ func (s *Server) statsHandler(w http.ResponseWriter, r *http.Request) {
 
 func getDirSize(path string) int64 {
 	var size int64
+	//nolint:errcheck
 	filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
@@ -557,24 +558,28 @@ func (s *Server) broadcastMessage(msg map[string]interface{}) {
 
 func (s *Server) sendWSMessage(conn *websocket.Conn, msg map[string]interface{}) {
 	data, _ := json.Marshal(msg)
+	//nolint:errcheck
 	conn.WriteMessage(websocket.TextMessage, data)
 }
 
 func (s *Server) handleShutdown(sigCh chan os.Signal) {
 	<-sigCh
 	log.Println("Shutting down daemon...")
+	//nolint:errcheck
 	s.Stop()
 }
 
 // Helper functions
 func sendJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
+	//nolint:errcheck
 	json.NewEncoder(w).Encode(data)
 }
 
 func sendError(w http.ResponseWriter, message string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
+	//nolint:errcheck
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 

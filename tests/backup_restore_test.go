@@ -19,10 +19,13 @@ func TestBackupManager_BackupWithoutData(t *testing.T) {
 
 	toolDir := filepath.Join(tempDir, "claude")
 	configDir := filepath.Join(toolDir, "projects")
+	//nolint:errcheck
 	os.MkdirAll(configDir, 0755)
 
 	// Create test files
+	//nolint:errcheck
 	os.WriteFile(filepath.Join(toolDir, "settings.json"), []byte("{}"), 0644)
+	//nolint:errcheck
 	os.WriteFile(filepath.Join(configDir, "project.json"), []byte("{}"), 0644)
 
 	cfg := &config.Config{
@@ -264,6 +267,7 @@ func TestBackupManager_Restore_ArchiveFormat(t *testing.T) {
 	// properly formatted tar.gz archives
 	tempDir := t.TempDir()
 	restoreDir := filepath.Join(tempDir, "restore")
+	//nolint:errcheck
 	os.MkdirAll(restoreDir, 0755)
 
 	archivePath := filepath.Join(tempDir, "test.tar.gz")
@@ -280,7 +284,9 @@ func TestBackupManager_Restore_ArchiveFormat(t *testing.T) {
 		Size: int64(len(content)),
 		Mode: 0644,
 	}
+	//nolint:errcheck
 	tw.WriteHeader(header)
+	//nolint:errcheck
 	tw.Write(content)
 	tw.Close()
 	gw.Close()

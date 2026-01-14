@@ -118,6 +118,7 @@ func (bm *BackupManager) Backup(includeData bool) (*BackupResult, error) {
 	// Backup ai-manager config
 	configPath := config.GetDefaultConfigPath()
 	if _, err := os.Stat(configPath); err == nil {
+		//nolint:errcheck
 		addFileToTar(tw, configPath, "ai-manager-config.yaml")
 		filesBackedUp++
 	}

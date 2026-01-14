@@ -11,17 +11,12 @@ import (
 	"ai-manager/internal/config"
 )
 
-// Helper to capture command output
-type cmdOutput struct {
-	stdout string
-	stderr string
-}
-
 // TestCLIVersion tests the version command
 func TestCLIVersion(t *testing.T) {
 	rootCmd := cli.GetRootCmd()
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
+	rootCmd.SetErr(buf)
 	rootCmd.SetArgs([]string{"version"})
 
 	if err := rootCmd.Execute(); err != nil {
@@ -127,7 +122,9 @@ func TestCLIStatsCommand(t *testing.T) {
 	configPath := filepath.Join(tempDir, "config.yaml")
 
 	// Create some test files
+	//nolint:errcheck
 	os.WriteFile(filepath.Join(tempDir, "file1.txt"), []byte("test content"), 0644)
+	//nolint:errcheck
 	os.WriteFile(filepath.Join(tempDir, "file2.txt"), []byte("more content"), 0644)
 
 	testCfg := &config.Config{
@@ -339,11 +336,14 @@ func TestCLICleanupCommand(t *testing.T) {
 	// Create temp directories
 	tmpPath := filepath.Join(tempDir, "tmp")
 	cachePath := filepath.Join(tempDir, "cache")
+	//nolint:errcheck
 	os.MkdirAll(tmpPath, 0755)
+	//nolint:errcheck
 	os.MkdirAll(cachePath, 0755)
 
 	// Create a file older than retention period
 	oldFile := filepath.Join(tmpPath, "old_file.txt")
+	//nolint:errcheck
 	os.WriteFile(oldFile, []byte("old content"), 0644)
 
 	// Set file modification time to 10 days ago

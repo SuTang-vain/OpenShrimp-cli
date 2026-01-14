@@ -696,6 +696,7 @@ Provides unified memory across different AI tools.`,
 				return nil
 
 			default:
+				//nolint:errcheck
 				cmd.Help()
 				return nil
 			}

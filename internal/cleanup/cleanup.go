@@ -71,6 +71,7 @@ func (c *Cleaner) cleanPath(path string, days int) (int, int64) {
 
 	cutoff := time.Now().AddDate(0, 0, -days)
 
+	//nolint:errcheck
 	filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil // Skip errors

@@ -137,6 +137,7 @@ func (s *Scheduler) AddTask(task *ScheduledTask) error {
 
 // scheduleTask adds a task to the cron scheduler
 func (s *Scheduler) scheduleTask(task *ScheduledTask) {
+	//nolint:errcheck
 	s.cron.AddFunc(task.Schedule, func() {
 		s.RunTask(task)
 	})

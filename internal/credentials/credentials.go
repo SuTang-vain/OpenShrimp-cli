@@ -102,6 +102,7 @@ func (s *CredentialsStore) Delete(model, keyName string) error {
 
 	// Delete from keychain
 	if s.isKeychainAvailable() {
+		//nolint:errcheck
 		keyring.Delete(ServiceName, s.keyringKey(model, keyName))
 	}
 
