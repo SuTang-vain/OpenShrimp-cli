@@ -12,6 +12,7 @@ import (
 	"ai-manager/internal/discovery"
 	"ai-manager/internal/link"
 	"ai-manager/internal/models"
+	"ai-manager/internal/scheduler"
 	"ai-manager/internal/switcher"
 	"ai-manager/internal/utils"
 
@@ -740,4 +741,129 @@ func splitString(s, sep string) []string {
 	}
 	parts = append(parts, s[start:])
 	return parts
+}
+
+// Scheduler command variables
+var (
+	schedulerEnabled   bool
+	schedulerList      bool
+	schedulerAdd       bool
+	schedulerRemove    bool
+	schedulerType      string
+	schedulerSchedule  string
+	schedulerTool      string
+)
+
+// newSchedulerCmd returns the scheduler command
+func newSchedulerCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "scheduler",
+		Short: "Manage scheduled tasks",
+		Long: `Manage scheduled tasks for automatic cleanup and backup.
+Supports cron-style schedules for automation.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.Load(config.GetDefaultConfigPath())
+			if err != nil {
+				return err
+			}
+
+			sch := scheduler.NewScheduler(cfg)
+			if err := sch.LoadTasks(); err != nil {
+				return err
+			}
+
+			switch {
+			case schedulerList:
+				tasks := sch.GetTasks()
+				if jsonOutput {
+					return printJSON(tasks)
+				}
+				fmt.Println("=== Scheduled Tasks ===")
+				for _, t := range tasks {
+					status := "disabled"
+					if t.Enabled {
+						status = "enabled"
+					}
+					fmt.Printf("  %s: %s (%s) - %s\n", t.ID, t.Type, status, t.Schedule)
+					if t.LastRun != nil {
+						fmt.Printf("    Last run: %s\n", t.LastRun.Format("2006-01-02 15:04:05"))
+					}
+				}
+				return nil
+
+			case schedulerAdd:
+				if len(args) < 1 {
+					return fmt.Errorf("task ID required")
+				}
+				taskID := args[0]
+
+				task := &scheduler.ScheduledTask{
+					ID:       taskID,
+					Type:     scheduler.TaskType(schedulerType),
+					Schedule: schedulerSchedule,
+					Enabled:  schedulerEnabled,
+					Tool:     schedulerTool,
+				}
+
+				if err := sch.AddTask(task); err != nil {
+					return err
+				}
+
+				// Save to config
+				cfg.Scheduler.Tasks = sch.ToConfig()
+				if err := config.Save(cfg, config.GetDefaultConfigPath()); err != nil {
+					return err
+				}
+
+				if jsonOutput {
+					return printJSON(task)
+				}
+				fmt.Printf("Task %s added: %s (%s)\n", taskID, schedulerType, schedulerSchedule)
+				return nil
+
+			case schedulerRemove:
+				if len(args) < 1 {
+					return fmt.Errorf("task ID required")
+				}
+				taskID := args[0]
+
+				if err := sch.DeleteTask(taskID); err != nil {
+					return err
+				}
+
+				// Save to config
+				cfg.Scheduler.Tasks = sch.ToConfig()
+				if err := config.Save(cfg, config.GetDefaultConfigPath()); err != nil {
+					return err
+				}
+
+				if jsonOutput {
+					return printJSON(map[string]string{"status": "deleted"})
+				}
+				fmt.Printf("Task %s removed\n", taskID)
+				return nil
+
+			default:
+				stats := sch.GetStats()
+				if jsonOutput {
+					return printJSON(stats)
+				}
+				fmt.Printf("Scheduler: %v\n", stats["running"])
+				fmt.Printf("Total tasks: %d\n", stats["total_tasks"])
+				fmt.Printf("Enabled tasks: %d\n", stats["enabled_tasks"])
+				return nil
+			}
+		},
+	}
+
+	cmd.Flags().BoolVar(&schedulerList, "list", false, "List all scheduled tasks")
+	cmd.Flags().BoolVar(&schedulerAdd, "add", false, "Add a new scheduled task")
+	cmd.Flags().BoolVar(&schedulerRemove, "remove", false, "Remove a scheduled task")
+	cmd.Flags().BoolVar(&schedulerEnabled, "enabled", true, "Enable the task")
+	cmd.Flags().StringVar(&schedulerType, "type", "cleanup", "Task type (cleanup, backup)")
+	cmd.Flags().StringVar(&schedulerSchedule, "schedule", "0 0 * * *", "Cron schedule")
+	cmd.Flags().StringVar(&schedulerTool, "tool", "", "Tool name (for cleanup)")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
+
+	return cmd
 }

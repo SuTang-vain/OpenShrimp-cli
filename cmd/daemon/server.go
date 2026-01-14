@@ -17,6 +17,7 @@ import (
 	"ai-manager/internal/discovery"
 	"ai-manager/internal/link"
 	"ai-manager/internal/models"
+	"ai-manager/internal/scheduler"
 	"ai-manager/internal/switcher"
 
 	"github.com/gorilla/handlers"
@@ -128,6 +129,13 @@ func (s *Server) setupRoutes() {
 	s.router.HandleFunc("/api/links/{name}", s.deleteLinkHandler).Methods("DELETE")
 
 	s.router.HandleFunc("/api/stats", s.statsHandler).Methods("GET")
+
+	// Scheduler endpoints
+	s.router.HandleFunc("/api/scheduler", s.schedulerHandler).Methods("GET")
+	s.router.HandleFunc("/api/scheduler", s.schedulerCreateHandler).Methods("POST")
+	s.router.HandleFunc("/api/scheduler/{id}", s.schedulerUpdateHandler).Methods("PUT")
+	s.router.HandleFunc("/api/scheduler/{id}", s.schedulerDeleteHandler).Methods("DELETE")
+	s.router.HandleFunc("/api/scheduler/{id}/run", s.schedulerRunHandler).Methods("POST")
 
 	// WebSocket endpoint
 	s.router.HandleFunc("/ws", s.wsHandler)
@@ -561,4 +569,145 @@ func sendError(w http.ResponseWriter, message string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
+// Scheduler handlers
+func (s *Server) schedulerHandler(w http.ResponseWriter, r *http.Request) {
+	sch := scheduler.NewScheduler(s.cfg)
+	if err := sch.LoadTasks(); err != nil {
+		sendError(w, "Failed to load tasks: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sendJSON(w, map[string]interface{}{
+		"tasks": sch.GetTasks(),
+		"stats": sch.GetStats(),
+	})
+}
+
+func (s *Server) schedulerCreateHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ID       string `json:"id"`
+		Type     string `json:"type"`
+		Schedule string `json:"schedule"`
+		Enabled  bool   `json:"enabled"`
+		Tool     string `json:"tool"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	sch := scheduler.NewScheduler(s.cfg)
+	if err := sch.LoadTasks(); err != nil {
+		sendError(w, "Failed to load tasks: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	task := &scheduler.ScheduledTask{
+		ID:       req.ID,
+		Type:     scheduler.TaskType(req.Type),
+		Schedule: req.Schedule,
+		Enabled:  req.Enabled,
+		Tool:     req.Tool,
+	}
+
+	if err := sch.AddTask(task); err != nil {
+		sendError(w, "Failed to add task: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Save to config
+	s.cfg.Scheduler.Tasks = sch.ToConfig()
+	if err := config.Save(s.cfg, config.GetDefaultConfigPath()); err != nil {
+		sendError(w, "Failed to save config: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sendJSON(w, task)
+}
+
+func (s *Server) schedulerUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var req struct {
+		Schedule string `json:"schedule"`
+		Enabled  bool   `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	sch := scheduler.NewScheduler(s.cfg)
+	if err := sch.LoadTasks(); err != nil {
+		sendError(w, "Failed to load tasks: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := sch.UpdateTask(id, req.Enabled, req.Schedule); err != nil {
+		sendError(w, "Failed to update task: "+err.Error(), http.StatusNotFound)
+		return
+	}
+
+	// Save to config
+	s.cfg.Scheduler.Tasks = sch.ToConfig()
+	if err := config.Save(s.cfg, config.GetDefaultConfigPath()); err != nil {
+		sendError(w, "Failed to save config: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	task, _ := sch.GetTask(id)
+	sendJSON(w, task)
+}
+
+func (s *Server) schedulerDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	sch := scheduler.NewScheduler(s.cfg)
+	if err := sch.LoadTasks(); err != nil {
+		sendError(w, "Failed to load tasks: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := sch.DeleteTask(id); err != nil {
+		sendError(w, "Failed to delete task: "+err.Error(), http.StatusNotFound)
+		return
+	}
+
+	// Save to config
+	s.cfg.Scheduler.Tasks = sch.ToConfig()
+	if err := config.Save(s.cfg, config.GetDefaultConfigPath()); err != nil {
+		sendError(w, "Failed to save config: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sendJSON(w, map[string]string{"status": "deleted"})
+}
+
+func (s *Server) schedulerRunHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	sch := scheduler.NewScheduler(s.cfg)
+	if err := sch.LoadTasks(); err != nil {
+		sendError(w, "Failed to load tasks: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	task, ok := sch.GetTask(id)
+	if !ok {
+		sendError(w, "Task not found: "+id, http.StatusNotFound)
+		return
+	}
+
+	// Run the task
+	go sch.RunTask(task)
+
+	sendJSON(w, map[string]interface{}{
+		"status": "running",
+		"task":   task.ID,
+	})
 }

@@ -31,6 +31,7 @@ func Run() error {
 		newStatsCmd(),
 		newVersionCmd(),
 		newContextCmd(),
+		newSchedulerCmd(),
 	)
 
 	return rootCmd.Execute()

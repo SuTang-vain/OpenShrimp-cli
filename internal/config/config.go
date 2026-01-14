@@ -8,12 +8,27 @@ import (
 )
 
 type Config struct {
-	Version     string            `yaml:"version"`
-	HomeDir     string            `yaml:"home_dir"`
-	Tools       map[string]Tool   `yaml:"tools"`
-	Models      map[string]Model  `yaml:"models"`
-	Defaults    Defaults          `yaml:"defaults"`
-	Retention   RetentionPolicy   `yaml:"retention"`
+	Version     string                 `yaml:"version"`
+	HomeDir     string                 `yaml:"home_dir"`
+	Tools       map[string]Tool        `yaml:"tools"`
+	Models      map[string]Model       `yaml:"models"`
+	Defaults    Defaults               `yaml:"defaults"`
+	Retention   RetentionPolicy        `yaml:"retention"`
+	Scheduler   SchedulerConfig        `yaml:"scheduler"`
+}
+
+// SchedulerConfig holds scheduler configuration
+type SchedulerConfig struct {
+	Enabled bool                    `yaml:"enabled"`
+	Tasks   map[string]ScheduledTaskConfig `yaml:"tasks"`
+}
+
+// ScheduledTaskConfig represents a scheduled task configuration
+type ScheduledTaskConfig struct {
+	Type     string `yaml:"type"`
+	Schedule string `yaml:"schedule"`
+	Enabled  bool   `yaml:"enabled"`
+	Tool     string `yaml:"tool,omitempty"`
 }
 
 type Tool struct {

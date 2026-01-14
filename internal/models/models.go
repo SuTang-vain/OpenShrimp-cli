@@ -112,3 +112,6 @@ func expandHome(path string) string {
 	}
 	return path
 }
+
+// JSONMap is a generic map for JSON responses
+type JSONMap map[string]interface{}
