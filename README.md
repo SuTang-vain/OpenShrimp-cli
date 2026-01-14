@@ -112,17 +112,34 @@ make ui-dev
 # Open http://localhost:3000
 ```
 
-### Build Desktop App
+### Build Desktop App (Tauri)
 
 ```bash
-# Install Rust + Tauri
+# Install Rust + Tauri CLI
 make tauri-install
 
-# Build Tauri app
+# Build Tauri app for current platform
 make tauri-build
+
+# Build for specific platforms
+make tauri-build-mac   # macOS (Apple Silicon + Intel)
+make tauri-build-linux # Linux
+make tauri-build-windows # Windows (requires cross-compilation)
+
+# Output location: tauri/src-tauri/target/release/bundle/
 ```
 
-### Production Build
+### Development
+
+```bash
+# Run in development mode with hot reload
+make tauri-dev
+
+# Run for specific target
+make tauri-dev-mac
+```
+
+### Production Build (Web UI)
 
 ```bash
 # Build frontend
@@ -251,12 +268,25 @@ internal/models/     → Shared models
 internal/scheduler/  → Cron task scheduler
 internal/switcher/   → Model switching
 ui/                  → Vue 3 frontend
-  src/components/    → UI components
+  src/components/    → UI components (Dashboard, ToolList, ModelSwitcher, etc.)
   src/App.vue        → Main app
   vite.config.ts     → Vite configuration
 tauri/               → Tauri desktop config
+  src-tauri/
+    src/main.rs      → Entry point
+    src/lib.rs       → Tauri commands (get_app_version, run_cli_command, etc.)
+    tauri.conf.json  → Tauri configuration
 .github/workflows/   → GitHub Actions CI/CD
 ```
+
+### Tauri Desktop Features
+
+- **Native system tray** (ready to implement)
+- **Notifications** - Desktop notifications for task completion
+- **File dialogs** - Open/save backup files
+- **Clipboard** - Copy configuration snippets
+- **HTTP client** - API communication with daemon
+- **Shell integration** - Run CLI commands from UI
 
 ## CI/CD Pipeline
 
