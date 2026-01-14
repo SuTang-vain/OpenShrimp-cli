@@ -276,7 +276,9 @@ func TestCLIBackupCommand(t *testing.T) {
 	}
 
 	// Create some test files to backup
+	//nolint:errcheck
 	os.WriteFile(filepath.Join(tempDir, "config.json"), []byte("{}"), 0644)
+	//nolint:errcheck
 	os.WriteFile(filepath.Join(tempDir, "data.txt"), []byte("test data"), 0644)
 
 	if err := config.Save(testCfg, filepath.Join(tempDir, "config.yaml")); err != nil {

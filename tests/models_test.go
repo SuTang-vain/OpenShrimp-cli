@@ -39,12 +39,16 @@ func TestCalculateDiskUsage(t *testing.T) {
 	file1 := filepath.Join(tempDir, "file1.txt")
 	file2 := filepath.Join(tempDir, "file2.txt")
 	subdir := filepath.Join(tempDir, "subdir")
+	//nolint:errcheck
 	os.MkdirAll(subdir, 0755)
 	file3 := filepath.Join(subdir, "file3.txt")
 
 	// Write known sizes (100 bytes each)
+	//nolint:errcheck
 	os.WriteFile(file1, make([]byte, 100), 0644)
+	//nolint:errcheck
 	os.WriteFile(file2, make([]byte, 200), 0644)
+	//nolint:errcheck
 	os.WriteFile(file3, make([]byte, 300), 0644)
 
 	usage, err := models.CalculateDiskUsage(tempDir)

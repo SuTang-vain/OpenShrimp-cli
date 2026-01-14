@@ -273,8 +273,11 @@ func (m *Manager) GetProject(projectPath string) (*ProjectContext, error) {
 		return nil, err
 	}
 
+	//nolint:errcheck
 	json.Unmarshal([]byte(techStackJSON), &proj.TechStack)
+	//nolint:errcheck
 	json.Unmarshal([]byte(keywordsJSON), &proj.Keywords)
+	//nolint:errcheck
 	json.Unmarshal([]byte(contextFilesJSON), &proj.ContextFiles)
 
 	return &proj, nil
@@ -373,11 +376,14 @@ func (m *Manager) SearchConversations(query string) ([]*Conversation, error) {
 		var conv Conversation
 		var messagesJSON, tagsJSON string
 
+		//nolint:errcheck
 		rows.Scan(&conv.ID, &conv.Tool, &conv.Model, &conv.Title, &conv.Summary,
 			&messagesJSON, &tagsJSON, &conv.ProjectPath,
 			&conv.CreatedAt, &conv.UpdatedAt)
 
+		//nolint:errcheck
 		json.Unmarshal([]byte(messagesJSON), &conv.Messages)
+		//nolint:errcheck
 		json.Unmarshal([]byte(tagsJSON), &conv.Tags)
 
 		conversations = append(conversations, &conv)

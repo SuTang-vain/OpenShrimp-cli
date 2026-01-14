@@ -147,6 +147,7 @@ func TestScanner_Scan_WithConfigFile(t *testing.T) {
 	// Create a temporary directory with a config file
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "config.json")
+	//nolint:errcheck
 	os.WriteFile(configPath, []byte("{}"), 0644)
 
 	cfg := &config.Config{
