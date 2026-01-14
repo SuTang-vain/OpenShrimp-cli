@@ -6,6 +6,7 @@ import ModelSwitcher from './components/ModelSwitcher.vue'
 import BackupPanel from './components/BackupPanel.vue'
 import LinkManager from './components/LinkManager.vue'
 import SchedulerPanel from './components/SchedulerPanel.vue'
+import CredentialsPanel from './components/CredentialsPanel.vue'
 
 const connected = ref(false)
 const reconnecting = ref(false)
@@ -90,6 +91,7 @@ onUnmounted(() => {
         <!-- Right Column -->
         <div class="space-y-6">
           <ModelSwitcher />
+          <CredentialsPanel />
           <SchedulerPanel />
           <BackupPanel />
           <LinkManager />

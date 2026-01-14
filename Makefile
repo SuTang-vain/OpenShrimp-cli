@@ -64,3 +64,39 @@ tauri-dev: ui-deps
 tauri-build:
 	cd ui && npm run build
 	cd tauri && cargo tauri build
+
+# Shell completion
+completion:
+	@echo "Installing bash completion..."
+	@mkdir -p ~/.bash_completion.d
+	@cp completion/ai-mgr.bash ~/.bash_completion.d/
+	@echo "Bash completion installed. Run: source ~/.bash_completion.d/ai-mgr.bash"
+
+	@echo ""
+	@echo "Installing zsh completion..."
+	@cp completion/ai-mgr.zsh ~/.zsh/_ai-mgr
+	@echo "Zsh completion installed. Restart zsh or run: autoload _ai-mgr"
+
+# Docker
+docker-build:
+	docker build -t ai-manager:latest .
+
+docker-run:
+	docker run -p 19999:19999 -v ~/.ai-manager:/home/app/.ai-manager ai-manager:latest
+
+# Lint
+lint:
+	golangci-lint run ./...
+	cd ui && npx eslint src --ext .vue,.ts,.tsx
+
+# Full release build
+release-all: clean build ui-build
+	GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o ai-mgr-darwin-amd64 .
+	GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o ai-mgr-darwin-arm64 .
+	GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ai-mgr-linux-amd64 .
+	GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o ai-mgr-linux-arm64 .
+
+	@echo "Release binaries built:"
+	@ls -la ai-mgr-*
+	@echo ""
+	@echo "UI built in ui/dist/"

@@ -32,6 +32,7 @@ func Run() error {
 		newVersionCmd(),
 		newContextCmd(),
 		newSchedulerCmd(),
+		newCredentialsCmd(),
 	)
 
 	return rootCmd.Execute()

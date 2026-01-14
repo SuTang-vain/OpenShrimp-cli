@@ -9,6 +9,7 @@ import (
 	"ai-manager/internal/cleanup"
 	"ai-manager/internal/config"
 	"ai-manager/internal/context"
+	"ai-manager/internal/credentials"
 	"ai-manager/internal/discovery"
 	"ai-manager/internal/link"
 	"ai-manager/internal/models"
@@ -866,4 +867,187 @@ Supports cron-style schedules for automation.`,
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 
 	return cmd
+}
+
+// Credentials command variables
+var (
+	credSet       bool
+	credGet       bool
+	credDelete    bool
+	credList      bool
+	credModel     string
+	credKeyName   string
+	credValue     string
+	credEnvVar    string
+	credProvider  string
+)
+
+// newCredentialsCmd returns the credentials command
+func newCredentialsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "credentials",
+		Short: "Manage API credentials securely",
+		Long: `Manage API credentials for AI models securely.
+Uses system keychain (macOS Keychain, Linux Secret Service) when available,
+with encrypted file storage as fallback. Credentials are never stored in config files.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			store, err := credentials.NewCredentialsStore()
+			if err != nil {
+				return err
+			}
+
+			switch {
+			case credList:
+				return listCredentials(store)
+
+			case credSet:
+				if credModel == "" {
+					return fmt.Errorf("model name required (--model)")
+				}
+				if credKeyName == "" {
+					return fmt.Errorf("key name required (--key)")
+				}
+				if credValue == "" && credEnvVar == "" {
+					return fmt.Errorf("either --value or --env required")
+				}
+
+				if credEnvVar != "" {
+					// Set environment variable reference
+					if err := store.SetFromEnv(credModel, credKeyName, credEnvVar, credProvider); err != nil {
+						return err
+					}
+					if jsonOutput {
+						return printJSON(map[string]interface{}{
+							"status":   "set",
+							"model":    credModel,
+							"key":      credKeyName,
+							"env_var":  credEnvVar,
+							"provider": credProvider,
+						})
+					}
+					fmt.Printf("Credential set: %s:%s (env: %s)\n", credModel, credKeyName, credEnvVar)
+				} else {
+					// Set value directly (stored in keychain/file)
+					if err := store.Set(credModel, credKeyName, credValue, credProvider); err != nil {
+						return err
+					}
+					if jsonOutput {
+						return printJSON(map[string]interface{}{
+							"status":   "set",
+							"model":    credModel,
+							"key":      credKeyName,
+							"provider": credProvider,
+						})
+					}
+					fmt.Printf("Credential set: %s:%s\n", credModel, credKeyName)
+				}
+				return nil
+
+			case credGet:
+				if credModel == "" {
+					return fmt.Errorf("model name required (--model)")
+				}
+				if credKeyName == "" {
+					return fmt.Errorf("key name required (--key)")
+				}
+
+				_, err := store.Get(credModel, credKeyName)
+				if err != nil {
+					if jsonOutput {
+						return printJSON(map[string]interface{}{
+							"model":   credModel,
+							"key":     credKeyName,
+							"set":     false,
+							"message": "credential not found",
+						})
+					}
+					fmt.Printf("Credential not found: %s:%s\n", credModel, credKeyName)
+					return nil
+				}
+
+				if jsonOutput {
+					return printJSON(map[string]interface{}{
+						"model":   credModel,
+						"key":     credKeyName,
+						"set":     true,
+						"message": "[hidden]",
+					})
+				}
+				fmt.Printf("%s:%s = [hidden]\n", credModel, credKeyName)
+				return nil
+
+			case credDelete:
+				if credModel == "" {
+					return fmt.Errorf("model name required (--model)")
+				}
+				if credKeyName == "" {
+					return fmt.Errorf("key name required (--key)")
+				}
+
+				if err := store.Delete(credModel, credKeyName); err != nil {
+					return err
+				}
+
+				if jsonOutput {
+					return printJSON(map[string]interface{}{
+						"status": "deleted",
+						"model":  credModel,
+						"key":    credKeyName,
+					})
+				}
+				fmt.Printf("Credential deleted: %s:%s\n", credModel, credKeyName)
+				return nil
+
+			default:
+				// List all credentials
+				return listCredentials(store)
+			}
+		},
+	}
+
+	cmd.Flags().BoolVar(&credList, "list", false, "List all credentials")
+	cmd.Flags().BoolVar(&credSet, "set", false, "Set a credential")
+	cmd.Flags().BoolVar(&credGet, "get", false, "Get a credential value")
+	cmd.Flags().BoolVar(&credDelete, "delete", false, "Delete a credential")
+	cmd.Flags().StringVar(&credModel, "model", "", "Model name (e.g., claude-sonnet-4)")
+	cmd.Flags().StringVar(&credKeyName, "key", "", "Key name (e.g., ANTHROPIC_API_KEY)")
+	cmd.Flags().StringVar(&credValue, "value", "", "Credential value (will be stored securely)")
+	cmd.Flags().StringVar(&credEnvVar, "env", "", "Environment variable name (e.g., ANTHROPIC_API_KEY)")
+	cmd.Flags().StringVar(&credProvider, "provider", "", "Provider name (e.g., anthropic)")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
+
+	return cmd
+}
+
+func listCredentials(store *credentials.CredentialsStore) error {
+	creds, err := store.List()
+	if err != nil {
+		return err
+	}
+
+	if jsonOutput {
+		return printJSON(map[string]interface{}{
+			"credentials": creds,
+			"count":       len(creds),
+		})
+	}
+
+	fmt.Println("=== API Credentials ===")
+	if len(creds) == 0 {
+		fmt.Println("No credentials configured.")
+		fmt.Println("\nUsage:")
+		fmt.Println("  ai-mgr credentials --set --model claude-sonnet-4 --key ANTHROPIC_API_KEY --value sk-... --provider anthropic")
+		fmt.Println("  ai-mgr credentials --set --model claude-sonnet-4 --key API_KEY --env ANTHROPIC_API_KEY --provider anthropic")
+		return nil
+	}
+
+	for _, c := range creds {
+		status := "[not set]"
+		if c.Set {
+			status = "[set]"
+		}
+		fmt.Printf("%s %s:%s (%s)\n", status, c.Model, c.Key, c.Provider)
+	}
+	fmt.Printf("\nTotal: %d credential(s)\n", len(creds))
+	return nil
 }

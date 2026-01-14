@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  # Create GitHub Release
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Build binaries
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -o ai-mgr-darwin-amd64 .
+          GOOS=darwin GOARCH=arm64 go build -o ai-mgr-darwin-arm64 .
+          GOOS=linux GOARCH=amd64 go build -o ai-mgr-linux-amd64 .
+          GOOS=linux GOARCH=arm64 go build -o ai-mgr-linux-arm64 .
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build UI
+        working-directory: ./ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Prepare release bundle
+        run: |
+          mkdir -p release
+          cp ai-mgr-darwin-amd64 release/
+          cp ai-mgr-darwin-arm64 release/
+          cp ai-mgr-linux-amd64 release/
+          cp ai-mgr-linux-arm64 release/
+          cp -r ui/dist release/web-ui/
+          cp README.md release/
+          cp LICENSE release/
+
+      - name: Create checksums
+        working-directory: ./release
+        run: |
+          shasum -a 256 * > checksums.txt
+          cat checksums.txt
+
+      - name: Upload binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/ai-mgr-darwin-amd64
+            release/ai-mgr-darwin-arm64
+            release/ai-mgr-linux-amd64
+            release/ai-mgr-linux-arm64
+            release/web-ui/**
+            release/checksums.txt
+          generate_release_notes: true
+
+  # Build and publish Homebrew formula
+  homebrew:
+    name: Homebrew Formula
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Homebrew formula
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          sed -e "s|VERSION_PLACEHOLDER|${VERSION#v}|g" \
+              -e "s|SHA256_PLACEHOLDER|$(shasum -a 256 release/ai-mgr-darwin-amd64 | awk '{print $1}')|g" \
+              .github Formula/ai-manager.rb.template > Formula/ai-manager.rb
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          path: Formula
+          branch: homebrew-update
+          title: Update ai-manager formula to ${{ github.event.release.tag_name }}
+          commit-message: "chore(homebrew): update ai-manager to ${{ github.event.release.tag_name }}"
+          body: |
+            Updates ai-manager Homebrew formula to version ${{ github.event.release.tag_name }}
+
+            - Built from GitHub release
+            - Multi-platform support (darwin-amd64, darwin-arm64, linux-amd64, linux-arm64)
+            - Includes Web UI bundle
+          labels: |
+            dependencies
+            homebrew
+
+  # Build Docker image
+  docker:
+    name: Docker Image
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: openshrimp/ai-manager
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -1,0 +1,55 @@
+class AiManager < Formula
+  desc "AI Tools Manager - Unified management for AI development tools"
+  homepage "https://github.com/sutang/ai-manager"
+  url "https://github.com/sutang/ai-manager/releases/download/vVERSION_PLACEHOLDER/ai-mgr-darwin-amd64"
+  version "VERSION_PLACEHOLDER"
+  sha256 "SHA256_PLACEHOLDER"
+  license "MIT"
+
+  depends_on "go" => :build
+
+  def install
+    # Install binary
+    bin.install "ai-mgr-darwin-amd64" => "ai-mgr"
+
+    # Install web UI
+    (share/"ai-manager/web-ui").install "web-ui"
+
+    # Create config directory
+    (etc/"ai-manager").mkdir
+
+    # Install completion scripts
+    bash_completion.install "completion/ai-mgr.bash" => "ai-mgr"
+    zsh_completion.install "completion/ai-mgr.zsh" => "_ai-mgr"
+  end
+
+  def caveats
+    <<~EOS
+      AI Manager has been installed!
+
+      To start the daemon:
+        ai-mgr daemon
+
+      To use the CLI:
+        ai-mgr scan
+        ai-mgr cleanup
+        ai-mgr switch claude-sonnet-4
+
+      Web UI available at: http://localhost:19999
+
+      Configuration file: #{etc}/ai-manager/config.yaml
+    EOS
+  end
+
+  service do
+    run [bin/"ai-mgr", "daemon"]
+    keep_alive true
+    log_path var/"log/ai-manager.log"
+    error_log_path var/"log/ai-manager-error.log"
+  end
+
+  test do
+    assert_version = version.to_s
+    system "#{bin}/ai-mgr", "--version"
+  end
+end

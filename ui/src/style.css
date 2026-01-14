@@ -64,3 +64,11 @@ body {
 .status-error {
   @apply bg-red-500/20 text-red-400;
 }
+
+.btn-sm {
+  @apply px-2 py-1 text-sm;
+}
+
+.radio {
+  @apply w-4 h-4 text-green-500 bg-slate-900 border-slate-600 rounded focus:ring-green-500;
+}

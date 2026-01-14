@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"ai-manager/internal/config"
+	"ai-manager/internal/credentials"
 	"ai-manager/internal/models"
 	"ai-manager/internal/utils"
 )
@@ -182,4 +183,91 @@ func ValidateAPIKey(modelName string) (bool, error) {
 
 func FormatBytes(bytes int64) string {
 	return models.FormatBytes(bytes)
+}
+
+// GetCredentialStore returns a new credential store
+func GetCredentialStore() (*credentials.CredentialsStore, error) {
+	return credentials.NewCredentialsStore()
+}
+
+// SetModelCredential sets a credential for a model
+func SetModelCredential(model, keyName, value, provider string) error {
+	store, err := credentials.NewCredentialsStore()
+	if err != nil {
+		return err
+	}
+	return store.Set(model, keyName, value, provider)
+}
+
+// GetModelCredential retrieves a credential for a model
+func GetModelCredential(model, keyName string) (string, error) {
+	store, err := credentials.NewCredentialsStore()
+	if err != nil {
+		return "", err
+	}
+	return store.Get(model, keyName)
+}
+
+// DeleteModelCredential deletes a credential for a model
+func DeleteModelCredential(model, keyName string) error {
+	store, err := credentials.NewCredentialsStore()
+	if err != nil {
+		return err
+	}
+	return store.Delete(model, keyName)
+}
+
+// ListModelCredentials lists all credentials for a model
+func ListModelCredentials(model string) ([]credentials.CredentialInfo, error) {
+	store, err := credentials.NewCredentialsStore()
+	if err != nil {
+		return nil, err
+	}
+	return store.GetForModel(model)
+}
+
+// CheckModelCredentials checks if a model has required credentials
+func CheckModelCredentials(model string) (map[string]bool, error) {
+	store, err := credentials.NewCredentialsStore()
+	if err != nil {
+		return nil, err
+	}
+
+	creds, err := store.GetForModel(model)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]bool)
+	for _, c := range creds {
+		result[c.Key] = c.Set
+	}
+	return result, nil
+}
+
+// SetEnvCredential sets an environment variable reference for a credential
+func SetEnvCredential(model, keyName, envVar, provider string) error {
+	store, err := credentials.NewCredentialsStore()
+	if err != nil {
+		return err
+	}
+	return store.SetFromEnv(model, keyName, envVar, provider)
+}
+
+// GetEnvVarForCredential gets the environment variable for a credential
+func GetEnvVarForCredential(model, keyName string) (string, bool, error) {
+	store, err := credentials.NewCredentialsStore()
+	if err != nil {
+		return "", false, err
+	}
+	return store.GetEnvVar(model, keyName)
+}
+
+// HasModelCredentials checks if a model has any credentials set
+func HasModelCredentials(model string) (bool, error) {
+	store, err := credentials.NewCredentialsStore()
+	if err != nil {
+		return false, err
+	}
+	return store.HasCredentials(model)
 }

@@ -14,6 +14,7 @@ import (
 	"ai-manager/internal/backup"
 	"ai-manager/internal/cleanup"
 	"ai-manager/internal/config"
+	"ai-manager/internal/credentials"
 	"ai-manager/internal/discovery"
 	"ai-manager/internal/link"
 	"ai-manager/internal/models"
@@ -136,6 +137,12 @@ func (s *Server) setupRoutes() {
 	s.router.HandleFunc("/api/scheduler/{id}", s.schedulerUpdateHandler).Methods("PUT")
 	s.router.HandleFunc("/api/scheduler/{id}", s.schedulerDeleteHandler).Methods("DELETE")
 	s.router.HandleFunc("/api/scheduler/{id}/run", s.schedulerRunHandler).Methods("POST")
+
+	// Credentials endpoints
+	s.router.HandleFunc("/api/credentials", s.credentialsHandler).Methods("GET")
+	s.router.HandleFunc("/api/credentials", s.credentialsSetHandler).Methods("POST")
+	s.router.HandleFunc("/api/credentials/{model}/{key}", s.credentialsDeleteHandler).Methods("DELETE")
+	s.router.HandleFunc("/api/credentials/{model}", s.modelCredentialsHandler).Methods("GET")
 
 	// WebSocket endpoint
 	s.router.HandleFunc("/ws", s.wsHandler)
@@ -709,5 +716,147 @@ func (s *Server) schedulerRunHandler(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, map[string]interface{}{
 		"status": "running",
 		"task":   task.ID,
+	})
+}
+
+// Credentials handlers
+func (s *Server) credentialsHandler(w http.ResponseWriter, r *http.Request) {
+	store, err := credentials.NewCredentialsStore()
+	if err != nil {
+		sendError(w, "Failed to create credentials store: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	creds, err := store.List()
+	if err != nil {
+		sendError(w, "Failed to list credentials: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sendJSON(w, map[string]interface{}{
+		"credentials": creds,
+		"count":       len(creds),
+	})
+}
+
+func (s *Server) credentialsSetHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Model    string `json:"model"`
+		Key      string `json:"key"`
+		Value    string `json:"value,omitempty"`
+		EnvVar   string `json:"env_var,omitempty"`
+		Provider string `json:"provider"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Model == "" || req.Key == "" {
+		sendError(w, "Model and key are required", http.StatusBadRequest)
+		return
+	}
+
+	store, err := credentials.NewCredentialsStore()
+	if err != nil {
+		sendError(w, "Failed to create credentials store: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if req.EnvVar != "" {
+		// Set environment variable reference
+		if err := store.SetFromEnv(req.Model, req.Key, req.EnvVar, req.Provider); err != nil {
+			sendError(w, "Failed to set credential: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else if req.Value != "" {
+		// Set value directly (stored securely)
+		if err := store.Set(req.Model, req.Key, req.Value, req.Provider); err != nil {
+			sendError(w, "Failed to set credential: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		sendError(w, "Either value or env_var is required", http.StatusBadRequest)
+		return
+	}
+
+	s.broadcastMessage(map[string]interface{}{
+		"type":   "credential_set",
+		"model":  req.Model,
+		"key":    req.Key,
+	})
+
+	sendJSON(w, map[string]interface{}{
+		"status":  "set",
+		"model":   req.Model,
+		"key":     req.Key,
+		"provider": req.Provider,
+	})
+}
+
+func (s *Server) credentialsDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	model := vars["model"]
+	key := vars["key"]
+
+	store, err := credentials.NewCredentialsStore()
+	if err != nil {
+		sendError(w, "Failed to create credentials store: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := store.Delete(model, key); err != nil {
+		sendError(w, "Failed to delete credential: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	s.broadcastMessage(map[string]interface{}{
+		"type":  "credential_deleted",
+		"model": model,
+		"key":   key,
+	})
+
+	sendJSON(w, map[string]interface{}{
+		"status": "deleted",
+		"model":  model,
+		"key":    key,
+	})
+}
+
+func (s *Server) modelCredentialsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	model := vars["model"]
+
+	store, err := credentials.NewCredentialsStore()
+	if err != nil {
+		sendError(w, "Failed to create credentials store: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	creds, err := store.GetForModel(model)
+	if err != nil {
+		sendError(w, "Failed to get credentials: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Check which credentials are actually set
+	results := make([]map[string]interface{}, 0, len(creds))
+	for _, c := range creds {
+		_, err := store.Get(model, c.Key)
+		envVar, isEnv, _ := store.GetEnvVar(model, c.Key)
+
+		results = append(results, map[string]interface{}{
+			"model":   c.Model,
+			"key":     c.Key,
+			"source":  c.Source,
+			"provider": c.Provider,
+			"set":     err == nil || isEnv,
+			"env_var": envVar,
+		})
+	}
+
+	sendJSON(w, map[string]interface{}{
+		"model":       model,
+		"credentials": results,
 	})
 }

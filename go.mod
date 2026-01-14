@@ -7,13 +7,17 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/mattn/go-sqlite3 v1.14.33
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.10.2
+	github.com/zalando/go-keyring v0.2.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
+	github.com/alessio/shellescape v1.4.1 // indirect
+	github.com/danieljoos/wincred v1.1.0 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
+	github.com/godbus/dbus/v5 v5.0.6 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 )
