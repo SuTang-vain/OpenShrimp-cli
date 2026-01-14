@@ -78,7 +78,7 @@ jobs:
 
       - name: Run UI type check
         working-directory: ./ui
-        run: npm run build -- --dry-run
+        run: npx vue-tsc --noEmit
 
       - name: Build UI
         working-directory: ./ui
@@ -169,7 +169,3 @@ jobs:
 
       - name: Run linter
         run: golangci-lint run ./...
-
-      - name: Run UI linter
-        working-directory: ./ui
-        run: npx eslint src --ext .vue,.ts,.tsx

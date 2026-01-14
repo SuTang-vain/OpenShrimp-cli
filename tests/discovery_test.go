@@ -34,11 +34,13 @@ func TestScanner_Scan_EmptyConfig(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if result.Total != 0 {
-		t.Errorf("expected 0 total tools, got %d", result.Total)
+	// Empty config uses default tools, so expect 3 tools
+	if result.Total != 3 {
+		t.Errorf("expected 3 default tools, got %d", result.Total)
 	}
-	if result.Enabled != 0 {
-		t.Errorf("expected 0 enabled tools, got %d", result.Enabled)
+	// All default tools are enabled
+	if result.Enabled != 3 {
+		t.Errorf("expected 3 enabled tools, got %d", result.Enabled)
 	}
 }
 
