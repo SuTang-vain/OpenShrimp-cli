@@ -13,8 +13,9 @@ A unified CLI and Desktop UI tool for managing AI development tools (Claude, Gem
 - **Context Sharing**: Unified context management across AI tools
 - **Credential Management**: Secure API key storage with system keychain integration
 - **Scheduled Tasks**: Automated cleanup and backup with cron support
-- **Web UI**: Beautiful desktop interface built with Tauri + Vue 3
+- **Desktop UI**: Beautiful desktop interface built with Tauri 2 + Vue 3
 - **CLI**: Full-featured command-line interface
+- **Native Desktop**: Auto-starts daemon, runs as native macOS app (.app/.dmg)
 
 ## Installation
 
@@ -104,12 +105,21 @@ ai-mgr daemon
 # Install dependencies
 make deps
 
+# Start Tauri desktop app (recommended)
+make tauri-dev
+
+# The app will automatically start the daemon and show the UI
+```
+
+### Standalone Web UI
+
+```bash
 # Start daemon (required for UI)
 ./ai-mgr daemon &
 
-# Start UI development server
-make ui-dev
-# Open http://localhost:3000
+# Build and serve UI
+make ui-build
+# Open http://127.0.0.1:19999
 ```
 
 ### Build Desktop App (Tauri)

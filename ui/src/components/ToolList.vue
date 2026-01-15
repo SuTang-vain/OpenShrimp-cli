@@ -12,8 +12,10 @@ interface Tool {
 
 interface ScanResult {
   tools: Tool[]
-  total: number
-  enabled: number
+  total_found?: number
+  total?: number
+  enabled_count?: number
+  enabled?: number
 }
 
 const tools = ref<ScanResult | null>(null)

@@ -173,3 +173,17 @@ tauri/                    # Tauri 配置
 ---
 
 *最后更新: 2026-01-15*
+
+## 2026-01-15 修复记录
+
+### Tauri 桌面应用 API 代理修复
+- 修复前端 API 请求无法连接到 daemon 的问题
+- 实现 HTTP 服务器 API 代理功能（端口 3456 → 19999）
+- 添加超时处理和连接池管理
+- 修复前端 ToolList 组件类型定义不匹配问题
+
+### 文件变更
+- `tauri/src-tauri/src/lib.rs` - 添加 API 代理和静态文件服务
+- `ui/src/components/ToolList.vue` - 修复 ScanResult 接口字段名
+- `tauri/src-tauri/tauri.conf.json` - 更新 Tauri 2.x 配置
+- `tauri/src-tauri/capabilities/default.json` - 添加权限配置

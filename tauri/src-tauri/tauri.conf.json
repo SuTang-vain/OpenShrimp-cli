@@ -3,27 +3,17 @@
   "productName": "OpenShrimp",
   "version": "0.2.0",
   "identifier": "com.openshrimp",
-  "build": {
-    "devUrl": "http://localhost:19999"
-  },
+  "build": {},
   "app": {
-    "windows": [
-      {
-        "title": "OpenShrimp",
-        "width": 1200,
-        "height": 800,
-        "resizable": true,
-        "fullscreen": false,
-        "minWidth": 800,
-        "minHeight": 600
-      }
-    ],
     "security": {
       "csp": null
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all"
+    "targets": "all",
+    "resources": [
+      "../../ui/dist"
+    ]
   }
 }
